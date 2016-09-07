@@ -1,0 +1,1 @@
+This repository contains Python code where I have been playing around/experimented with the scikit-learn machine learning toolkit and the ionosphere dataset from the UCI Machine Learning Repository (available here: https://archive.ics.uci.edu/ml/datasets/Ionosphere).
