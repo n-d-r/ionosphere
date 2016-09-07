@@ -33,5 +33,3 @@ rows = [row.split(',') for row in rows]
 df = pd.DataFrame(rows)
 df.rename(columns={df.columns.values[-1]: 'target'}, inplace=True)
 df.to_csv('ionosphere_processed.csv')
-df['target'].replace({'g': 1, 'b': 0}, inplace=True)
-df.to_csv('ionosphere_processed.csv')
