@@ -10,6 +10,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import roc_curve, auc, confusion_matrix
 from sklearn.cross_validation import KFold, train_test_split
+from sklearn.decomposition import PCA
 
 #===============================================================================
 # Loading and preparing the data
@@ -25,7 +26,14 @@ y = data_mat[:, n_cols-1]
 # Function definitions
 #===============================================================================
 
-# nothing here yet
+def plot_roc(fpr, tpr):
+  plt.figure(figsize=(7, 4))
+  plt.plot(fpr, tpr)
+  plt.plot(fpr, fpr, '--')
+  plt.xlabel('false positive rate')
+  plt.ylabel('true positive rate')
+  plt.show()
+  plt.close('all')
 
 #===============================================================================
 # Prediction, single logistic regression, entire dataset
@@ -39,14 +47,15 @@ probabilities = logit_classifier.predict_proba(X)
 fpr, tpr, thresholds = roc_curve(y_true=y, 
                                  y_score=probabilities[:, 1], 
                                  pos_label='g')
-auc = auc(fpr, tpr)
-plt.figure(figsize=(7, 4))
-plt.plot(fpr, tpr)
-plt.plot(fpr, fpr, '--')
-plt.xlabel('false positive rate')
-plt.ylabel('true positive rate')
-plt.show()
-plt.close('all')
+area_under_curve = auc(fpr, tpr)
+# plt.figure(figsize=(7, 4))
+# plt.plot(fpr, tpr)
+# plt.plot(fpr, fpr, '--')
+# plt.xlabel('false positive rate')
+# plt.ylabel('true positive rate')
+# plt.show()
+# plt.close('all')
+plot_roc(fpr, tpr)
 
 #===============================================================================
 # Prediction, single logistic regression, cross-validation
@@ -63,6 +72,33 @@ for train_index, test_index in kf:
                                    y_score=probabilities[:, 1],
                                    pos_label='g')
   list_of_auc.append(auc(fpr, tpr))
+
+#===============================================================================
+# Prediction, single logistic regression, train_test_split, PCA
+#===============================================================================
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=.33,
+                                                    random_state=0)
+
+# the exploratory analysis has unsurprisingly shown that there are 
+# correlations between the features so a PCA is used here to do some
+# dimensionality reduction
+
+pca = PCA(n_components=.85)    # retains 85% of variance explained
+pca.fit(X_train)
+
+X_train_transform = pca.transform(X_train)
+X_test_transform = pca.transform(X_test)
+
+logit_classifier = LogisticRegression(solver='liblinear')
+logit_classifier.fit(X_train_transform, y_train)
+
+probabilities = logit_classifier.predict_proba(X_test_transform)
+fpr, tpr, thresholds = roc_curve(y_true=y_test,
+                                 y_score=probabilities[:, 1],
+                                 pos_label='g')
+area_under_curve = auc(fpr, tpr)
+plot_roc(fpr, tpr)
 
 #===============================================================================
 # Prediction, single decision tree, entire dataset
