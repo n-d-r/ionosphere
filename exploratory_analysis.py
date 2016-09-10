@@ -36,12 +36,14 @@ def scree_plot(explained_var, save=True):
 
 def binned_histogram(series, n_bins, min_value=None, max_value=None):
   series = sorted(series)
-  if not min_value:
+  if min_value==None:
     min_value = series[0]
-  if not max_value:
+  if max_value==None:
     max_value = series[-1]
   if max_value < min_value:
     min_value, max_value = max_value, min_value
+  if min_value == max_value:
+    return ({(min_value, max_value): len(series)}, max_value / n_bins)
 
   bin_width = (max_value - min_value) / n_bins
   bin_counts = {(min_value + bin_width*n, 
@@ -73,7 +75,7 @@ def plot_histogram(bin_counts, bin_width, save=True):
     plt.show()
   plt.close('all')
 
-def plot_histograms_by_target(save=True, **kwargs):
+def plot_histograms_by_target(save=True, filename=None, **kwargs):
   data_pairs_pos = sorted([(bin[0], count) for bin, count in 
                            kwargs['positive'][0].items()])
   data_pairs_neg = sorted([(bin[0], count) for bin, count in 
@@ -87,7 +89,8 @@ def plot_histograms_by_target(save=True, **kwargs):
   plt.bar(left=x_neg, height=y_neg, width=kwargs['negative'][1],
           alpha=.5, color='orange')
   if save:
-    plt.savefig('overlapping_histograms.png', bbox_inches='tight')
+    plt.savefig('overlapping_histograms_{}.png'.format(filename), 
+                bbox_inches='tight')
   else:
     plt.show()
   plt.close('all')
@@ -112,14 +115,18 @@ X = data_filt.as_matrix()[:, :data_filt.shape[1]-1]
 
 plot_histogram(*binned_histogram(series=data['3'], n_bins=100))
 
-g_series = data.loc[data['target']=='g', '3']
-b_series = data.loc[data['target']=='b', '3']
-min_value = min(min(g_series), min(b_series))
-max_value = max(max(g_series), max(b_series))
-plot_histograms_by_target(
-  positive=binned_histogram(g_series, 100, min_value, max_value),
-  negative=binned_histogram(b_series, 100, min_value, max_value)
-)
+g_dataframe = data.loc[data['target']=='g', :]
+b_dataframe = data.loc[data['target']=='b', :]
+for column in data.columns[:-1]:
+  g_series = g_dataframe.loc[:, column]
+  b_series = b_dataframe.loc[:, column]
+  min_value = min(min(g_series), min(b_series))
+  max_value = max(max(g_series), max(b_series))
+  plot_histograms_by_target(
+    positive=binned_histogram(g_series, 100, min_value, max_value),
+    negative=binned_histogram(b_series, 100, min_value, max_value),
+    filename=column
+  )
 
 #===============================================================================
 # Covariance and correlation matrices of the features
