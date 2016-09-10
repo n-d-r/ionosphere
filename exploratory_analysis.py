@@ -22,7 +22,7 @@ y = data_mat[:, n_cols-1]
 # Function definitions
 #===============================================================================
 
-def scree_plot(explained_var, save=False):
+def scree_plot(explained_var, save=True):
   plt.figure(figsize=(7, 4))
   plt.bar(left=range(len(explained_var)), height=explained_var)
   plt.title('scree plot')
@@ -30,37 +30,66 @@ def scree_plot(explained_var, save=False):
   plt.ylabel('percent variance explained')
   if not save:
     plt.show()
-    plt.close('all')
   else:
     plt.savefig('scree_plot.png', bbox_inches='tight')
-    plt.close('all')
+  plt.close('all')
 
-def binned_histogram(series, n_bins):
+def binned_histogram(series, n_bins, min_value=None, max_value=None):
   series = sorted(series)
-  min_value = series[0]
-  max_value = series[-1]
+  if not min_value:
+    min_value = series[0]
+  if not max_value:
+    max_value = series[-1]
+  if max_value < min_value:
+    min_value, max_value = max_value, min_value
+
   bin_width = (max_value - min_value) / n_bins
   bin_counts = {(min_value + bin_width*n, 
                  min_value + bin_width*(n + 1)): 0 
                  for n in range(n_bins)}
   bins = sorted(bin_counts.keys())
   bin_index = 0
-  active_bin = bins[bin_index]
   for sample_index in range(len(series)):
-    if series[sample_index] >= active_bin[1]:
-      bin_index += 1
-      if not bin_index >= n_bins:
-        active_bin = bins[bin_index]
-    bin_counts[active_bin] += 1
+    for search_index in range(bin_index, n_bins):
+      if search_index == (n_bins - 1):
+        bin_counts[bins[-1]] += 1
+      else:
+        if series[sample_index] < bins[search_index][1]:
+          bin_counts[bins[search_index]] += 1
+          bin_index = search_index
+          break
+
   return (bin_counts, bin_width)
 
-def plot_histogram(bin_counts, bin_width):
+def plot_histogram(bin_counts, bin_width, save=True):
   data_pairs = sorted([(bin[0], count) for bin, count in bin_counts.items()])
   x, y = zip(*data_pairs)
 
   plt.figure(figsize=(7, 4))
-  plt.bar(left=x, height=y, width=bin_width)
-  plt.show()
+  plt.bar(left=x, height=y, width=bin_width, alpha=.5)
+  if save:
+    plt.savefig('histogram.png', bbox_inches='tight')
+  else:
+    plt.show()
+  plt.close('all')
+
+def plot_histograms_by_target(save=True, **kwargs):
+  data_pairs_pos = sorted([(bin[0], count) for bin, count in 
+                           kwargs['positive'][0].items()])
+  data_pairs_neg = sorted([(bin[0], count) for bin, count in 
+                           kwargs['negative'][0].items()])
+  x_pos, y_pos = zip(*data_pairs_pos)
+  x_neg, y_neg = zip(*data_pairs_neg)
+
+  plt.figure(figsize=(7, 4))
+  plt.bar(left=x_pos, height=y_pos, width=kwargs['positive'][1],
+          alpha=.5, color='blue')
+  plt.bar(left=x_neg, height=y_neg, width=kwargs['negative'][1],
+          alpha=.5, color='orange')
+  if save:
+    plt.savefig('overlapping_histograms.png', bbox_inches='tight')
+  else:
+    plt.show()
   plt.close('all')
 
 #===============================================================================
@@ -82,6 +111,15 @@ X = data_filt.as_matrix()[:, :data_filt.shape[1]-1]
 #===============================================================================
 
 plot_histogram(*binned_histogram(series=data['3'], n_bins=100))
+
+g_series = data.loc[data['target']=='g', '3']
+b_series = data.loc[data['target']=='b', '3']
+min_value = min(min(g_series), min(b_series))
+max_value = max(max(g_series), max(b_series))
+plot_histograms_by_target(
+  positive=binned_histogram(g_series, 100, min_value, max_value),
+  negative=binned_histogram(b_series, 100, min_value, max_value)
+)
 
 #===============================================================================
 # Covariance and correlation matrices of the features
