@@ -35,6 +35,34 @@ def scree_plot(explained_var, save=False):
     plt.savefig('scree_plot.png', bbox_inches='tight')
     plt.close('all')
 
+def binned_histogram(series, n_bins):
+  series = sorted(series)
+  min_value = series[0]
+  max_value = series[-1]
+  bin_width = (max_value - min_value) / n_bins
+  bin_counts = {(min_value + bin_width*n, 
+                 min_value + bin_width*(n + 1)): 0 
+                 for n in range(n_bins)}
+  bins = sorted(bin_counts.keys())
+  bin_index = 0
+  active_bin = bins[bin_index]
+  for sample_index in range(len(series)):
+    if series[sample_index] >= active_bin[1]:
+      bin_index += 1
+      if not bin_index >= n_bins:
+        active_bin = bins[bin_index]
+    bin_counts[active_bin] += 1
+  return (bin_counts, bin_width)
+
+def plot_histogram(bin_counts, bin_width):
+  data_pairs = sorted([(bin[0], count) for bin, count in bin_counts.items()])
+  x, y = zip(*data_pairs)
+
+  plt.figure(figsize=(7, 4))
+  plt.bar(left=x, height=y, width=bin_width)
+  plt.show()
+  plt.close('all')
+
 #===============================================================================
 # Summary statistics of the features
 #===============================================================================
@@ -42,11 +70,18 @@ def scree_plot(explained_var, save=False):
 data_descript = data.describe()
 # as can be seen, one of the features equals 
 # zero in all observations, so it can be removed
-to_remove_cols = data_descript.columns[data_descript.loc['mean', :] == 0]
+to_remove_cols = data_descript.columns[((data_descript.loc['mean', :] == 0) &
+                                        (data_descript.loc['std', :] == 0))]
 data_filt = data.loc[
   :, [col for col in data.columns if col not in to_remove_cols]
 ]
 X = data_filt.as_matrix()[:, :data_filt.shape[1]-1]
+
+#===============================================================================
+# Exploring with histograms
+#===============================================================================
+
+plot_histogram(*binned_histogram(series=data['3'], n_bins=100))
 
 #===============================================================================
 # Covariance and correlation matrices of the features
