@@ -95,6 +95,26 @@ def plot_histograms_by_target(save=True, filename=None, **kwargs):
     plt.show()
   plt.close('all')
 
+def plot_projections(projections, target, x_axis, y_axis, save=True):
+  # this function assumes that the order of the rows has not 
+  # been changed throughout and that therefore the features
+  # can be correctly sliced by the indices in the target variable
+  x_g = projections[target=='g', x_axis]
+  y_g = projections[target=='g', y_axis]
+  x_b = projections[target=='b', x_axis]
+  y_b = projections[target=='b', y_axis]
+  plt.figure(figsize=(7, 4))
+  plt.scatter(x=x_g, y=y_g, c='blue')
+  plt.scatter(x=x_b, y=y_b, c='orange')
+  plt.xlabel('PC index: {}'.format(x_axis))
+  plt.ylabel('PC index: {}'.format(y_axis))
+  if save:
+    plt.savefig('projections_on_{}_&_{}.png'.format(x_axis, y_axis), 
+                bbox_inches='tight')
+  else:
+    plt.show()
+  plt.close('all')
+
 #===============================================================================
 # Summary statistics of the features
 #===============================================================================
@@ -132,10 +152,7 @@ for column in data.columns[:-1]:
 # Covariance and correlation matrices of the features
 #===============================================================================
 
-X_centred = X
-for i in range(X_centred.shape[1]):
-  X_centred[:, i] = X_centred[:, i] - np.mean(X_centred[:, i])
-
+X_centred = X - np.mean(X, axis=0)
 cov_mat = (X.T).dot(X) / (X_centred.shape[0]-1)
 diagonals = np.diag(cov_mat).astype(float)
 diag_sqrt = np.sqrt(diagonals)
@@ -149,7 +166,7 @@ cor_mat = D_inv.dot(cov_mat).dot(D_inv)
 #===============================================================================
 
 pca = PCA()
-pca.fit(X)
+pca.fit(X_centred)
 scree_plot(pca.explained_variance_ratio_ * 100)
 
 # determine the number of components required for >= .85 variance explained
@@ -162,3 +179,32 @@ for i in range(len(pca.explained_variance_ratio_)):
   else:
     num_components += 1
     cumulative_var += pca.explained_variance_ratio_[i]
+
+#===============================================================================
+# Plotting projections of the data points on two principal components
+#===============================================================================
+
+# after having fit the PCA above, I now project the data points into the
+# space of the principal components which amounts to right-multiplying
+# the original data matrix by the pincipal components (i.e. the eigenvectors
+# of the covariance matrix)
+
+# trying both methods and comparing the results:
+epsilon = 1.0e-10
+X_proj_1 = pca.transform(X_centred)
+X_proj_2 = X_centred.dot(pca.components_.T)
+(X_proj_1 - X_proj_2 < epsilon).all()    # should evaluate to True
+
+# the first component caputes about 31% of the variance and the second
+# about 12%; let's visualize the dataset as a projection into the space
+# of these two components and color the dots according to which target
+# class they belong to - either 'g' or 'b'. since the explained variance
+# of the components drops below .05 after the first four, I will only
+# make biplots of the data points on those first four components
+
+for i in range(4):
+  for j in range((i+1), 4):
+    plot_projections(projections=X_proj_1,
+                     target=y,
+                     x_axis=i,
+                     y_axis=j)
